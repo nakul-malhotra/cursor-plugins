@@ -1,0 +1,51 @@
+---
+description: pstack per-role model choices (overrides skill defaults) — GitHub Copilot CLI slugs
+alwaysApply: true
+---
+# pstack model configuration for GitHub Copilot CLI.
+#
+# Every pstack skill reads this file explicitly ("use X from ~/.cursor/rules/pstack-models.mdc
+# when present"), so it works under Copilot even though Copilot never auto-applies .mdc rules.
+# The path is kept as-is so no upstream skill needs editing.
+#
+# Values below are plain Copilot model slugs, valid as-is for the Task tool's `model` field.
+# Copilot separates model from reasoning effort, so effort is a SEPARATE table at the bottom —
+# never append it to a slug here.
+#
+# `inherit-parent` or `auto` as a value: omit Task `model` and run on the parent chat model.
+# Alias entries in a panel list still count toward its fan-out.
+# Delete a line to fall back to the skill's inline default.
+
+feature, refactoring: grok-4.6
+bug-fix: gpt-5.6-sol
+perf-issue: gpt-5.6-sol
+hillclimb: gpt-5.6-sol
+judgment and prose: claude-opus-4.8
+hardest tasks: claude-opus-4.8
+how explorer: grok-4.6
+how explainer: claude-opus-4.8
+how critics: claude-opus-4.8, gpt-5.6-sol, grok-4.6, claude-opus-5
+why investigators: grok-4.6
+why synthesizer: claude-opus-4.8
+reflect tooling: gpt-5.6-sol
+reflect judgment, divergent, synthesizer: claude-opus-4.8
+arena runners: claude-opus-4.8, gpt-5.6-sol, grok-4.6, claude-opus-5
+arena cross-judge pool: claude-opus-4.8, gpt-5.6-sol, grok-4.6, claude-opus-5
+swarm workers: grok-4.6
+architect runners: claude-opus-4.8, gpt-5.6-sol, grok-4.6, claude-opus-5
+interrogate reviewers: claude-opus-4.8, gpt-5.6-sol, grok-4.6, claude-opus-5
+
+# Reasoning effort, passed as the Task tool's separate `reasoning_effort` field.
+# Match the role above to a row here. Omit the field when a row is absent.
+#
+# role class                          | reasoning_effort
+# ------------------------------------|------------------
+# judgment, prose, hardest tasks      | max
+# review panels (how, arena,          | high
+#   architect, interrogate)           |
+# bug-fix, perf-issue, hillclimb      | high
+# feature, refactoring                | high
+# swarm workers, why investigators    | medium
+# mechanical / report-only work       | low
+#
+# claude-haiku-4.5 does not accept reasoning_effort. Omit the field for it entirely.

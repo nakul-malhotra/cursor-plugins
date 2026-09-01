@@ -1,0 +1,7 @@
+{
+  "name": "pstack",
+  "description": "poteto's rigorous agent workflows: playbook routing, multi-model review panels, engineering principles, and verification discipline. Adapted for GitHub Copilot CLI.",
+  "author": {
+    "name": "Lauren Tan"
+  }
+}
