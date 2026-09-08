@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.credentials*
+.workspaces*
+.state/
+.env
+.env.*
+profiles/
+*.tgz

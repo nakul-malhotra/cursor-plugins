@@ -6,6 +6,7 @@ Official Cursor plugins for popular developer tools, frameworks, and SaaS produc
 
 | `name` | Plugin | Author | Category | `description` (from marketplace) |
 |:-------|:-------|:-------|:---------|:-------------------------------------|
+| `notion` | [Notion](notion/) | Nakul Malhotra | Productivity | Workspace-aware Notion gardening, todo planning, and guarded API editing. |
 | `teaching` | [Teaching](teaching/) | Cursor | Utilities | Skill mapping, practice plans, and learning retrospectives. |
 | `continual-learning` | [Continual Learning](continual-learning/) | Cursor | Developer Tools | Incremental transcript-driven memory updates for AGENTS.md using high-signal bullet points only. |
 | `cursor-team-kit` | [Cursor Team Kit](cursor-team-kit/) | Cursor | Developer Tools | Internal team workflows for CI, code review, shipping, local automation, and verification. |

@@ -1,0 +1,15 @@
+{
+  "key": "example",
+  "label": "Example",
+  "aliases": ["example-project"],
+  "repositories": ["/absolute/path/to/example-project"],
+  "credentialRef": "example-integration",
+  "connection": {
+    "botId": "00000000-0000-0000-0000-000000000001"
+  },
+  "roots": [{"kind": "page", "id": "00000000-0000-0000-0000-000000000002"}],
+  "protected": [],
+  "canonical": {},
+  "timezone": "America/Vancouver",
+  "todos": null
+}

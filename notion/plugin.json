@@ -1,0 +1,6 @@
+{
+  "name": "notion",
+  "version": "0.1.0",
+  "description": "Workspace-aware Notion gardening, todo planning, and guarded API editing.",
+  "skills": "skills/"
+}
