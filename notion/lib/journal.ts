@@ -49,7 +49,7 @@ export interface Journal {
   status: JournalStatus;
   steps: StepResult[];
   updatedAt: string;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; causeCode?: string };
   limitations?: string[];
 }
 

@@ -101,9 +101,12 @@ async function tree(scope: ScopedNotion, ref: ResourceRef, visited = new Set<str
       const kind = child.type === 'child_page' ? 'page' : child.type === 'child_database' ? 'database' : 'block';
       if (child.has_children === true || kind !== 'block') children.push(await tree(scope, { kind, id: childId }, visited));
       else {
-        if (visited.has(childId) || visited.size >= 1000) throw new NotionError('TREE_LIMIT', 'Source tree exceeds safety limits.');
-        visited.add(childId);
-        children.push({ resource: resourceState(await scope.read({ kind, id: childId })), children: [] });
+        const childKey = `${kind}:${childId}`;
+        if (visited.has(childKey) || visited.size >= 1000) throw new NotionError('TREE_LIMIT', 'Source tree exceeds safety limits.');
+        visited.add(childKey);
+        // The fresh listing supplies full blocks with validated parentage and protected IDs.
+        // Each subsequent observation still fetches its own listing; nothing crosses passes.
+        children.push({ resource: resourceState(child), children: [] });
       }
     }
   }
@@ -363,7 +366,6 @@ export async function applyPlan(
     await persist();
     try {
       checkBinding(scope, plan);
-      await recheck(scope, expected);
       journal.status = 'running';
       await persist();
       for (const step of plan.steps) {
@@ -400,11 +402,15 @@ export async function applyPlan(
       const uncertain = issued && (responded || !definiteRefusal);
       const knownCode = error instanceof NotionError ? error.code : 'IO_FAILURE';
       const failure = uncertain
-        ? new NotionError('UNCERTAIN', 'A mutation may have committed but its complete effect was not verified. Reconcile read-only before further work.')
+        ? new NotionError('UNCERTAIN', 'A mutation may have committed but its complete effect was not verified. Reconcile read-only before further work.', { causeCode: knownCode })
         : error;
       journal.status = uncertain ? 'uncertain' : journal.steps.some(step => step.status === 'applied') ? 'partial' : 'failed';
       if (active !== undefined && active.status !== 'applied') active.status = uncertain ? 'uncertain' : 'failed';
-      journal.error = { code: uncertain ? 'UNCERTAIN' : knownCode, message: uncertain ? 'Mutation outcome requires read-only reconciliation.' : 'The guarded attempt stopped; inspect observations before replanning.' };
+      journal.error = {
+        code: uncertain ? 'UNCERTAIN' : knownCode,
+        message: uncertain ? 'Mutation outcome requires read-only reconciliation.' : 'The guarded attempt stopped; inspect observations before replanning.',
+        ...(uncertain ? { causeCode: knownCode } : {}),
+      };
       await persist();
       throw failure;
     }
@@ -455,7 +461,10 @@ export async function readJournal(home: string, id: string): Promise<Journal> {
   });
   return {
     version: 1, planId: id, planDigest: string(raw.planDigest), workspace: string(raw.workspace), status, steps, updatedAt: string(raw.updatedAt),
-    ...(raw.error === undefined ? {} : { error: { code: string(object(raw.error).code), message: string(object(raw.error).message) } }),
+    ...(raw.error === undefined ? {} : { error: {
+      code: string(object(raw.error).code), message: string(object(raw.error).message),
+      ...(object(raw.error).causeCode === undefined ? {} : { causeCode: string(object(raw.error).causeCode) }),
+    } }),
     ...(raw.limitations === undefined ? {} : { limitations: array(raw.limitations).map(value => string(value)) }),
   };
 }

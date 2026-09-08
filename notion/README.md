@@ -62,3 +62,31 @@ Pass `--database` to include the database-backed task journey. The script record
 request metadata privately and confines writes to resources created by that run,
 apart from creating its marked scratch page under the selected root. Live tests
 are not part of the default suites.
+
+### Request efficiency
+
+Run `npm run benchmark:requests --silent` for a JSON request-count report using
+synthetic page moves and icon updates. It covers 100-item API pages and a
+two-item pagination stress case, with assertions for page identity, parentage,
+icons, and preserved block contents. Synthetic execution time and the theoretical
+350ms/request spacing bound are reported separately from live latency.
+
+Measured on 2026-09-06 against baseline `4dcdfe7`, with 100-item API pages:
+
+| Operation | Before: plan + apply requests | After: plan + apply requests |
+|---|---|---|
+| Move one page with 50 leaf blocks | 221 + 387 = 608 | 21 + 27 = 48 |
+| Move one page with five groups of ten leaves | 381 + 637 = 1,018 | 81 + 97 = 178 |
+| Move three pages with 175 leaves and update their icons | 737 + 6,309 = 7,046 | 37 + 316 = 353 |
+
+Fresh child listings already contain complete leaf blocks. The engine uses those
+blocks after validating their membership and protected-resource boundaries,
+instead of fetching every leaf and its ancestors again. Listings are fetched
+again for each observation pass; no cache survives between planning, mutations,
+or readback. The first mutation also uses one pre-write observation pass rather
+than two consecutive passes.
+
+The mixed-operation regression test caps this fixed scenario at 400 requests.
+Stale content, corrupted moves, and invalid child membership still stop the
+operation. For routine usage, keep document moves separate from lightweight
+edits and keep inspections scoped to the requested pages.

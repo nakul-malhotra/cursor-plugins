@@ -64,11 +64,24 @@ export class ScopedNotion {
     }
     await this.#authorize(ref, resource, context);
     const children = await this.client.paginate(`/blocks/${normalizedId}/children`);
+    const seen = new Set<string>();
     for (const child of children) {
       const childRef = actualRef(child);
       if (isProtectedResource(child, childRef, this.profile)) {
         throw new NotionError('PROTECTED', 'A protected Notion resource cannot be read.');
       }
+      const childParent = parentRef(child);
+      if (
+        childRef.kind !== 'block'
+        || childParent?.kind !== ref.kind
+        || childParent.id !== ref.id
+        || typeof child.has_children !== 'boolean'
+        || childRef.id === ref.id
+        || seen.has(childRef.id)
+      ) {
+        throw new NotionError('MALFORMED_RESPONSE', 'Notion returned an invalid child membership.');
+      }
+      seen.add(childRef.id);
     }
     return children;
   }

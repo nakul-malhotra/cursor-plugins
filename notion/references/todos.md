@@ -6,6 +6,50 @@ source, and returns a plan. It never writes to Notion directly.
 This reference documents the request and output contract. It does not establish that the plugin
 is installed or that any live workspace matches a profile.
 
+## Writing for people
+
+Use concise, plain-English prose for task titles, subitems, shipped-work logs, and user-facing
+summaries. Describe the action or outcome first, so a teammate can understand the work without
+knowing the implementation. Use one concrete action or outcome per item.
+
+Keep technical names, acronyms, file paths, and implementation detail only when they are
+necessary to explain the work, distinguish its scope, or preserve an important constraint.
+Explain unfamiliar terms briefly and put supporting mechanics in subitems. Preserve the actual
+meaning, ownership, dates, dependencies, and completion state; simpler wording must remain
+accurate.
+
+| Implementation-heavy wording | Human-readable wording |
+|---|---|
+| Add stale-plan preconditions | Stop planned Notion edits if the page has changed since planning |
+| Configure per-lane on-water duration | Set sea-travel time for each shipping route |
+
+When reading existing todos, explain technical wording in plain English in the response.
+Leave the live task text unchanged unless the user asks for an edit. This default does not
+authorize a retrospective rewrite of existing tasks or renaming configured shipped-work buckets.
+
+### PR links
+
+Include the relevant PR links with PR-related tasks and shipped entries, and retain them in
+user-facing summaries. Lead with what the work does, then attach the PR reference. A PR number
+or a copied technical PR title alone is not a useful task description.
+
+Use the actual repository's verified PR URL. Preserve existing PR references when changing
+wording, and resolve bare PR numbers against the correct repository before linking them.
+Include multiple links when the task depends on multiple PRs. If there is no associated PR,
+leave the reference out rather than inventing one.
+
+In responses, use a clickable label such as `[PR #42](<actual PR URL>)`. In todo request JSON,
+include the full URL in `text` or the relevant subitem. These fields are plain strings:
+the adapter does not render Markdown links or accept a separate `pr` field.
+
+For example, using an illustrative URL that must be replaced with the actual PR URL:
+
+```json
+{
+  "text": "Let users review a container allocation before publishing it - https://github.com/example/project/pull/42"
+}
+```
+
 ## Workflow
 
 Use `/notion:todos` with the shared installed CLI in three steps:
@@ -75,7 +119,10 @@ subitem:
   "items": [
     {
       "text": "infra updates",
-      "subitems": ["Added stale-plan preconditions", "Recorded uncertain writes"]
+      "subitems": [
+        "Stopped planned Notion edits when a page had changed since planning",
+        "Flagged edits whose result needs confirmation before retrying"
+      ]
     }
   ]
 }

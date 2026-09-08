@@ -155,7 +155,7 @@ test('all stale sources, parents and anchors are refused before the first mutati
     if (change === 'source') f.server.get(id(11)).paragraph = { rich_text: text('Human edit') };
     if (change === 'parent') f.server.get(id(3)).icon = { type: 'emoji', emoji: 'X' };
     if (change === 'anchor') f.server.get(id(12)).parent = parent({ kind: 'page', id: id(4) });
-    await assert.rejects(applyPlan(f.scope, f.home, plan.id), code('STALE_PLAN'));
+    await assert.rejects(applyPlan(f.scope, f.home, plan.id), code(change === 'anchor' ? 'MALFORMED_RESPONSE' : 'STALE_PLAN'));
     assert.equal(f.server.writes.length, 0);
     assert.equal((await readJournal(f.home, plan.id)).status, 'failed');
   }

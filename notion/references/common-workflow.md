@@ -24,6 +24,20 @@ All write paths go through a persisted plan. Routine explicitly requested change
 
 Keep private request files and plan records out of source control. State contains private workspace content and must not be uploaded as review evidence; use synthetic fixtures or sanitized operational summaries.
 
+## Efficient execution
+
+Keep the inspection proportional to the request. Resolve exact task references and
+read those pages and their destination; do not expand a small page cleanup into a
+workspace-wide review. Independent reads can run together. Reuse the resulting
+snapshots, and extract compact titles, IDs, parents, and relevant text instead of
+repeatedly printing full API responses.
+
+Keep whole-document moves separate from lightweight icon and link edits. Every
+mutation rechecks its plan's observations, so combining unrelated document trees
+in one plan repeats their reads. Prefer one move per plan and batch compatible
+small edits. Do not run writers for the same workspace in parallel: they share
+one profile lock.
+
 ## Failures
 
 An error is an error. Stale state needs a new inspection. Busy scope needs the other write to finish. Partial results name completed steps. Uncertain writes need read-only reconciliation of the original journal before another attempt.

@@ -46,6 +46,11 @@ be moved or archived.
 | `BUSY` | A writer holds the profile lock, or ownership is unverifiable. Wait for a live owner; do not remove its lock. |
 | `TAMPERED_STATE` | Private state failed integrity validation. Preserve it for investigation; never edit a signature or digest to bypass the refusal. |
 
+Uncertain failures include a typed `causeCode` in the error and journal when
+available. It distinguishes a readback mismatch from a transport-level uncertain
+response without recording the response body. It does not authorize retrying a
+write; reconcile the actual effect first.
+
 There is no automatic rollback, automatic stale-lock removal, or automatic
 resumption of interrupted attempts. For an explicitly reported dead lock owner,
 inspect the exact lock file and associated journal, confirm that no writer or
