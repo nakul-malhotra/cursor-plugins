@@ -1,10 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import {
-  Command,
-  CommanderError,
-  InvalidArgumentError,
-  Option,
-} from "commander";
+import { ensureDependenciesInstalled } from "../bootstrap.ts";
 import {
   GhGitHubReader,
   WatcherQueryError,
@@ -21,6 +16,12 @@ import {
 import { renderJson, renderPretty } from "./render.ts";
 import type * as T from "./types.ts";
 import { nonEmpty, parsePrNumber } from "./types.ts";
+const {
+  Command,
+  CommanderError,
+  InvalidArgumentError,
+  Option,
+} = ensureDependenciesInstalled();
 export interface CliOptions {
   readonly owner: string | null;
   readonly repo: string | null;

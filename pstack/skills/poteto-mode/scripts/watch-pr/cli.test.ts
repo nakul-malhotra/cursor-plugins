@@ -20,7 +20,7 @@ import { parsePrNumber } from "./types.ts";
 const silentIo = { stdout: () => {}, stderr: () => {} };
 
 describe("immutable bootstrap", () => {
-  it("runs cold and warm CLI help without writing to source", () => {
+  it("runs cold and warm CLI help with pinned dependencies despite an ancestor package", () => {
     const directory = mkdtempSync(join(process.cwd(), ".bootstrap-test-"));
     const source = join(directory, "source");
     const cache = join(directory, "cache");
@@ -29,6 +29,25 @@ describe("immutable bootstrap", () => {
       cpSync(join(import.meta.dir, "..", file), join(source, file));
     }
     cpSync(import.meta.dir, join(source, "watch-pr"), { recursive: true });
+    cpSync(join(import.meta.dir, "..", "orch"), join(source, "orch"), {
+      recursive: true,
+    });
+    const ancestorCommander = join(directory, "node_modules", "commander");
+    mkdirSync(ancestorCommander, { recursive: true });
+    writeFileSync(
+      join(ancestorCommander, "package.json"),
+      JSON.stringify({ name: "commander", type: "module", main: "index.js" })
+    );
+    writeFileSync(
+      join(ancestorCommander, "index.js"),
+      [
+        "export class Command {}",
+        "export class CommanderError {}",
+        "export class InvalidArgumentError {}",
+        "export class Option {}",
+        'throw new Error("UNPINNED_PARENT_COMMANDER");',
+      ].join("\n")
+    );
     const lock = readFileSync(join(source, "bun.lock"));
     const manifest = readFileSync(join(source, "package.json"));
     const entries = readdirSync(source);
@@ -36,24 +55,29 @@ describe("immutable bootstrap", () => {
     try {
       expect(() => writeFileSync(join(source, "write-probe"), "")).toThrow();
       for (let attempt = 0; attempt < 2; attempt++) {
-        const result = Bun.spawnSync(
-          [process.execPath, join(source, "watch-pr", "watch-pr"), "--help"],
-          {
-            cwd: directory,
-            env: {
-              ...process.env,
-              GH_TOKEN: "",
-              GITHUB_TOKEN: "",
-              NODE_PATH: "",
-              XDG_CACHE_HOME: cache,
-              BUN_INSTALL_CACHE_DIR: join(directory, "bun-cache"),
-            },
-            timeout: 30_000,
-          }
-        );
-        expect(result.exitCode).toBe(0);
-        expect(result.stdout.toString()).toContain("Usage: watch-pr");
-        expect(result.stderr.toString()).toBe("");
+        for (const [entryPoint, usage] of [
+          ["watch-pr/watch-pr", "Usage: watch-pr"],
+          ["orch/orch.ts", "Usage: orch"],
+        ]) {
+          const result = Bun.spawnSync(
+            [process.execPath, join(source, entryPoint), "--help"],
+            {
+              cwd: directory,
+              env: {
+                ...process.env,
+                GH_TOKEN: "",
+                GITHUB_TOKEN: "",
+                NODE_PATH: "",
+                XDG_CACHE_HOME: cache,
+                BUN_INSTALL_CACHE_DIR: join(directory, "bun-cache"),
+              },
+              timeout: 30_000,
+            }
+          );
+          expect(result.exitCode).toBe(0);
+          expect(result.stdout.toString()).toContain(usage);
+          expect(result.stderr.toString()).toBe("");
+        }
       }
       expect(existsSync(join(source, "node_modules"))).toBe(false);
       expect(readdirSync(source)).toEqual(entries);

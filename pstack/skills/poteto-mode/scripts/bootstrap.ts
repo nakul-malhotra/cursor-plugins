@@ -9,7 +9,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
 
 const scriptsDirectory = import.meta.dir;
 const installKey = currentInstallKey();
@@ -37,13 +38,16 @@ function currentInstallKey(): string {
     .digest("hex");
 }
 
-export function ensureDependenciesInstalled(): void {
-  const installed =
+function dependenciesInstalled(): boolean {
+  return (
     existsSync(commanderPackagePath) &&
     existsSync(installKeyPath) &&
-    readFileSync(installKeyPath, "utf8").trim() === installKey;
+    readFileSync(installKeyPath, "utf8").trim() === installKey
+  );
+}
 
-  if (!installed) {
+export function ensureDependenciesInstalled(): typeof import("commander") {
+  if (!dependenciesInstalled()) {
     const cacheDirectory = join(installDirectory, "..");
     mkdirSync(cacheDirectory, { recursive: true });
     const stagingDirectory = mkdtempSync(join(cacheDirectory, ".install-"));
@@ -86,9 +90,7 @@ export function ensureDependenciesInstalled(): void {
           !(error instanceof Error) ||
           !("code" in error) ||
           (error.code !== "EEXIST" && error.code !== "ENOTEMPTY") ||
-          !existsSync(commanderPackagePath) ||
-          !existsSync(installKeyPath) ||
-          readFileSync(installKeyPath, "utf8").trim() !== installKey
+          !dependenciesInstalled()
         ) {
           throw error;
         }
@@ -98,18 +100,5 @@ export function ensureDependenciesInstalled(): void {
     }
   }
 
-  const modulePaths = process.env.NODE_PATH?.split(delimiter) ?? [];
-  if (installed && modulePaths[0] === nodeModulesDirectory) return;
-
-  const restarted = Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      NODE_PATH: [nodeModulesDirectory, ...modulePaths].join(delimiter),
-    },
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  process.exit(restarted.exitCode ?? 1);
+  return createRequire(commanderPackagePath)("./");
 }
