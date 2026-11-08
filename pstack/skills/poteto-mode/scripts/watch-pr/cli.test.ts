@@ -1,4 +1,16 @@
 import { describe, expect, it } from "bun:test";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { type CliRuntime, main, parseArgs } from "./cli.ts";
 import { fakeReader, passingCheck } from "./fakes.test-helper.ts";
 import { renderJson, renderPretty } from "./render.ts";
@@ -6,6 +18,84 @@ import type { GitHubReader, WatcherVerdict } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
 
 const silentIo = { stdout: () => {}, stderr: () => {} };
+
+describe("immutable bootstrap", () => {
+  it("runs cold and warm CLI help with pinned dependencies despite an ancestor package", () => {
+    const directory = mkdtempSync(join(process.cwd(), ".bootstrap-test-"));
+    const source = join(directory, "source");
+    const cache = join(directory, "cache");
+    mkdirSync(source);
+    for (const file of ["bootstrap.ts", "package.json", "bun.lock"]) {
+      cpSync(join(import.meta.dir, "..", file), join(source, file));
+    }
+    cpSync(import.meta.dir, join(source, "watch-pr"), { recursive: true });
+    cpSync(join(import.meta.dir, "..", "orch"), join(source, "orch"), {
+      recursive: true,
+    });
+    const ancestorCommander = join(directory, "node_modules", "commander");
+    mkdirSync(ancestorCommander, { recursive: true });
+    writeFileSync(
+      join(ancestorCommander, "package.json"),
+      JSON.stringify({ name: "commander", type: "module", main: "index.js" })
+    );
+    writeFileSync(
+      join(ancestorCommander, "index.js"),
+      [
+        "export class Command {}",
+        "export class CommanderError {}",
+        "export class InvalidArgumentError {}",
+        "export class Option {}",
+        'throw new Error("UNPINNED_PARENT_COMMANDER");',
+      ].join("\n")
+    );
+    const lock = readFileSync(join(source, "bun.lock"));
+    const manifest = readFileSync(join(source, "package.json"));
+    const entries = readdirSync(source);
+    chmodSync(source, 0o555);
+    try {
+      expect(() => writeFileSync(join(source, "write-probe"), "")).toThrow();
+      for (let attempt = 0; attempt < 2; attempt++) {
+        for (const [entryPoint, usage] of [
+          ["watch-pr/watch-pr", "Usage: watch-pr"],
+          ["orch/orch.ts", "Usage: orch"],
+        ]) {
+          const result = Bun.spawnSync(
+            [process.execPath, join(source, entryPoint), "--help"],
+            {
+              cwd: directory,
+              env: {
+                ...process.env,
+                GH_TOKEN: "",
+                GITHUB_TOKEN: "",
+                NODE_PATH: "",
+                XDG_CACHE_HOME: cache,
+                BUN_INSTALL_CACHE_DIR: join(directory, "bun-cache"),
+              },
+              timeout: 30_000,
+            }
+          );
+          expect(result.exitCode).toBe(0);
+          expect(result.stdout.toString()).toContain(usage);
+          expect(result.stderr.toString()).toBe("");
+        }
+      }
+      expect(existsSync(join(source, "node_modules"))).toBe(false);
+      expect(readdirSync(source)).toEqual(entries);
+      expect(readFileSync(join(source, "bun.lock"))).toEqual(lock);
+      expect(readFileSync(join(source, "package.json"))).toEqual(manifest);
+      const installs = readdirSync(join(cache, "poteto-mode-tools"));
+      expect(installs).toHaveLength(1);
+      expect(
+        readFileSync(
+          join(cache, "poteto-mode-tools", installs[0], "bun.lock")
+        )
+      ).toEqual(lock);
+    } finally {
+      chmodSync(source, 0o755);
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }, 90_000);
+});
 
 function testRuntime(reader: GitHubReader): {
   readonly runtime: CliRuntime;
